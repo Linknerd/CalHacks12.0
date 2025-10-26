@@ -15,7 +15,15 @@ MODEL_PATH   = "yolo11m.pt"
 model = YOLO(MODEL_PATH)
 initPosX = -100
 initPosY = -100
+trackedObjectID = -10
 started = False
+def getTrackID(box):
+    if box.id is None:
+        return -1
+    else:
+        return int(box.id)
+    
+
 # Iterate the tracker stream once (this opens and reads the webcam internally)
 for r in model.track(
     source=0,                 # webcam index
@@ -29,21 +37,31 @@ for r in model.track(
     verbose=False
 ):
     frame = r.plot()  # annotated image with boxes/ids/labels
-    trackedObjectID = -10
     if(not started):
         for box in r.boxes:
             if int(box.cls) == SUITCASE:
                 trackedObjectID = int(box.id)
                 started = True
                 initPosX, initPosY, w, h = box.xywh[0].cpu().numpy().astype(int)
+                print(initPosX)
+                print(initPosY)
+                print("SUITCASE HAS BEEN PLANTED")
     idFound = False
     for box in r.boxes:
-        if box.id == trackedObjectID:
+        if getTrackID(box) == trackedObjectID or int(box.cls) == SUITCASE:
+            found = True
             x,y,w,h = box.xywh[0].cpu().numpy().astype(int)
-            if initPosX-5 < x < initPosX+5 and initPosY-5 < y < initPosY+5:
-                pass
+            if(getTrackID(box) != trackedObjectID):
+                print("Changed IDs")
+                trackedObjectID = getTrackID(box)
+            offset = 20
+            if initPosX-offset < x < initPosX+offset and initPosY-offset < y < initPosY+offset:
+                print("NOT MOVED")
             else:
                 print("OBJECT MOVED")
+
+
+    
 
                 
 
