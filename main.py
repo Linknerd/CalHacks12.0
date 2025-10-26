@@ -15,10 +15,10 @@ MODEL_PATH   = "yolo11m.pt"
 model = YOLO(MODEL_PATH)
 initPosX = -100
 initPosY = -100
-suitcaseMap = {}
-phoneMap = {}
-backpackMap = {}
-laptopMap = {}
+suitcaseMap = {id0: {"ref": (x, y), "cls": SUITCASE}}
+phoneMap = {id0: {"ref": (x, y), "cls": CELL_PHONE}}
+backpackMap = {id0: {"ref": (x, y), "cls": BACKPACK}}
+laptopMap ={id0: {"ref": (x, y), "cls": LAPTOP}}
 
 def getMap(n):
     if n == SUITCASE:
@@ -29,6 +29,8 @@ def getMap(n):
         return laptopMap
     elif n == BACKPACK:
         return backpackMap
+    else:
+        return {}
 
 
 
@@ -39,8 +41,10 @@ def getTrackID(box):
         return -1
     else:
         return int(box.id)
-    
-
+laptopIDX = 0
+backpackIDX = 0
+phoneIDX = 0
+suitcaseIDX = 0
 # Iterate the tracker stream once (this opens and reads the webcam internally)
 for r in model.track(
     source=1,                 # webcam index
@@ -53,51 +57,45 @@ for r in model.track(
     classes=CLASS_FILTER,     # filter classes
     verbose=False
 ):
-    laptopIDX = 0
-    backpackIDX = 0
-    phoneIDX = 0
-    suitcaseIDX = 0
     frame = r.plot()  # annotated image with boxes/ids/labels
     if(not started):
         for box in r.boxes:
             val = int(box.cls) 
             if val != PERSON:
-                trackedObjectID = int(box.id)
                 started = True
                 initPosX, initPosY, w, h = box.xywh[0].cpu().numpy().astype(int)
                 print(initPosX)
                 print(initPosY)
                 objStr = ""
                 if val == SUITCASE:
-                    suitcaseMap[suitcaseIDX] = [initPosX,initPosY,SUITCASE]
+                    suitcaseMap.append({"ref": (initPosX, initPosY), "cls": SUITCASE})
+                    suitcaseIDX += 1
                     objStr = "SUITCASE"
-                    suitcaseIDX+=1
                 elif val == LAPTOP:
-                    laptopMap[laptopIDX] = [initPosX, initPosY, LAPTOP]
+                    laptopMap.append({"ref": (initPosX, initPosY), "cls": LAPTOP})
                     objStr = "LAPTOP"
                     laptopIDX += 1
                 elif val == CELL_PHONE:
-                    phoneMap[phoneIDX] = [initPosX, initPosY, CELL_PHONE]
+                    phoneMap.append({"ref": (initPosX, initPosY), "cls": CELL_PHONE})
                     objStr = "CELL PHONE"
                     phoneIDX+=1
                 elif val == BACKPACK:
-                    backpackMap[backpackIDX] = [initPosX, initPosY, BACKPACK]
-                    objStr = "CELL PHONE"
+                    backpackMap.append({"ref": (initPosX, initPosY), "cls": CELL_PHONE} )
+                    objStr = "BACKPACK"
                     backpackIDX+=1
                 print(objStr + " HAS BEEN PLANTED")
-    idFound = False
-    for box in r.boxes:
-        classes = int(box.cls)
-        
-        idFound = True
-        x,y,w,h = box.xywh[0].cpu().numpy().astype(int)
-        offset = 20
-        if initPosX-offset < x < initPosX+offset and initPosY-offset < y < initPosY+offset and 0 <= x <= 640 and 0<=y<=480:
-            print("NOT MOVED")
-        else:
+    found = False
+    if(started):
+        for box in r.boxes:
+            classes = cls_id = int(box.cls[0].item())
+            iMap = getMap(classes)        
+            for idx in iMap:
+                refx,refy = iMap[idx]["ref"] 
+                offset = 20
+                if refx-offset < x < refx+offset and refy-offset < y < refy+offset and 0 <= x <= 640 and 0<=y<=480:
+                    found = True
+        if not found:
             print("OBJECT MOVED")
-    if not idFound:
-        print("OBJECT MOVED")
     
 
                 
